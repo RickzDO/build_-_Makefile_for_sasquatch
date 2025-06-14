@@ -26,7 +26,7 @@ GZIP_SUPPORT = 1
 # To build using XZ Utils liblzma - install the library and uncomment
 # the XZ_SUPPORT line below.
 #
-XZ_SUPPORT = 1
+#XZ_SUPPORT = 1
 
 
 ############ Building LZO support ##############
@@ -37,7 +37,7 @@ XZ_SUPPORT = 1
 # LZO_SUPPORT line below. If needed, uncomment and set LZO_DIR to the
 # installation prefix.
 #
-LZO_SUPPORT = 1
+#LZO_SUPPORT = 1
 #LZO_DIR = /usr/local
 
 
@@ -72,13 +72,8 @@ LZO_SUPPORT = 1
 # and uncomment the LZMA_SUPPORT line below.
 #
 #LZMA_XZ_SUPPORT = 1
-LZMA_SUPPORT = 1
-# CJH: Added LZMA_BASE_DIR
-LZMA_BASE_DIR = ./LZMA
-LZMA_DIR = $(LZMA_BASE_DIR)/lzma465
-# CJH: Added these too...
-LZMA_ALT_DIR = $(LZMA_BASE_DIR)/lzmalt
-LZMA_ADAPT_DIR = $(LZMA_BASE_DIR)/lzmadaptive/C/7zip/Compress/LZMA_Lib
+#LZMA_SUPPORT = 1
+#LZMA_DIR = ../../../../LZMA/lzma465
 
 ######## Specifying default compression ########
 #
@@ -122,12 +117,11 @@ MKSQUASHFS_OBJS = mksquashfs.o read_fs.o action.o swap.o pseudo.o compressor.o \
 UNSQUASHFS_OBJS = unsquashfs.o unsquash-1.o unsquash-2.o unsquash-3.o \
 	unsquash-4.o swap.o compressor.o unsquashfs_info.o
 
-# CJH: Added -g, -Werror and -DSQUASHFS_TRACE
 CFLAGS += -Wno-error
-CFLAGS ?= -g -O2
+CFLAGS ?= -O2
 CFLAGS += $(EXTRA_CFLAGS) $(INCLUDEDIR) -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE -D_GNU_SOURCE -DCOMP_DEFAULT=\"$(COMP_DEFAULT)\" \
-	-Wall -Werror #-DSQUASHFS_TRACE
+	-Wall
 
 LIBS = -lpthread -lm
 ifeq ($(GZIP_SUPPORT),1)
@@ -139,18 +133,13 @@ COMPRESSORS += gzip
 endif
 
 ifeq ($(LZMA_SUPPORT),1)
-# CJH: Added -llzmalib
-LIBS += -L$(LZMA_ADAPT_DIR) -llzmalib 
 LZMA_OBJS = $(LZMA_DIR)/C/Alloc.o $(LZMA_DIR)/C/LzFind.o \
 	$(LZMA_DIR)/C/LzmaDec.o $(LZMA_DIR)/C/LzmaEnc.o $(LZMA_DIR)/C/LzmaLib.o
-# CJH: Added LZMA variant directories
-INCLUDEDIR += -I$(LZMA_DIR)/C -I$(LZMA_ALT_DIR) -I$(LZMA_ADAPT_DIR)
+INCLUDEDIR += -I$(LZMA_DIR)/C
 CFLAGS += -DLZMA_SUPPORT
 MKSQUASHFS_OBJS += lzma_wrapper.o $(LZMA_OBJS)
 UNSQUASHFS_OBJS += lzma_wrapper.o $(LZMA_OBJS)
 COMPRESSORS += lzma
-# CJH: Added LZMA_EXTRA_OBJS
-LZMA_EXTRA_OBJS = $(LZMA_ALT_DIR)/*.o
 endif
 
 ifeq ($(LZMA_XZ_SUPPORT),1)
@@ -234,12 +223,10 @@ $(error "COMP_DEFAULT is set to ${COMP_DEFAULT}, which  isn't selected to be \
 endif
 
 .PHONY: all
-# CJH: Made sasquatch the default target
-all: sasquatch 
+all: mksquashfs unsquashfs
 
-# CJH: Added LZMA_EXTRA_OBJS
 mksquashfs: $(MKSQUASHFS_OBJS)
-	$(CC) $(LDFLAGS) $(EXTRA_LDFLAGS) $(LZMA_EXTRA_OBJS) $(MKSQUASHFS_OBJS) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(EXTRA_LDFLAGS) $(MKSQUASHFS_OBJS) $(LIBS) -o $@
 
 mksquashfs.o: Makefile mksquashfs.c squashfs_fs.h squashfs_swap.h mksquashfs.h \
 	sort.h pseudo.h compressor.h xattr.h action.h error.h progressbar.h \
@@ -279,8 +266,7 @@ caches-queues-lists.o: caches-queues-lists.c error.h caches-queues-lists.h
 
 gzip_wrapper.o: gzip_wrapper.c squashfs_fs.h gzip_wrapper.h compressor.h
 
-# CJH: Added lzmalt, lzmadaptive
-lzma_wrapper.o: lzma_wrapper.c compressor.h squashfs_fs.h lzmalt lzmadaptive
+lzma_wrapper.o: lzma_wrapper.c compressor.h squashfs_fs.h
 
 lzma_xz_wrapper.o: lzma_xz_wrapper.c compressor.h squashfs_fs.h
 
@@ -290,13 +276,8 @@ lz4_wrapper.o: lz4_wrapper.c squashfs_fs.h lz4_wrapper.h compressor.h
 
 xz_wrapper.o: xz_wrapper.c squashfs_fs.h xz_wrapper.h compressor.h
 
-# CJH: Added LZMA_EXTRA_OBJS
 unsquashfs: $(UNSQUASHFS_OBJS)
-	$(CC) $(LDFLAGS) $(EXTRA_LDFLAGS) $(UNSQUASHFS_OBJS) $(LZMA_EXTRA_OBJS) $(LIBS) -o $@
-
-# CJH: Added sasquatch target
-sasquatch: $(UNSQUASHFS_OBJS)
-	$(CXX) $(LDFLAGS) $(EXTRA_LDFLAGS) $(LZMA_EXTRA_OBJS) $(UNSQUASHFS_OBJS) $(LIBS) -o $@
+	$(CC) $(LDFLAGS) $(EXTRA_LDFLAGS) $(UNSQUASHFS_OBJS) $(LIBS) -o $@
 
 unsquashfs.o: unsquashfs.h unsquashfs.c squashfs_fs.h squashfs_swap.h \
 	squashfs_compat.h xattr.h read_fs.h compressor.h
@@ -314,22 +295,12 @@ unsquashfs_xattr.o: unsquashfs_xattr.c unsquashfs.h squashfs_fs.h xattr.h
 
 unsquashfs_info.o: unsquashfs.h squashfs_fs.h
 
-# CJH: Added lzmalt, lzmadaptive
-.PHONY: lzmalt lzmadaptive
-lzmalt:
-	make -C $(LZMA_ALT_DIR)
-lzmadaptive:
-	make -C $(LZMA_ADAPT_DIR)
-
-# CJH: Added lzmalt, lzmadaptive
 .PHONY: clean
 clean:
-	-rm -f *.o $(LZMA_OBJS) mksquashfs unsquashfs sasquatch
-	make -C $(LZMA_ADAPT_DIR) clean
-	make -C $(LZMA_ALT_DIR) clean
+	-rm -f *.o mksquashfs unsquashfs
 
-# CJH: Added cp sasquatch
 .PHONY: install
-install: sasquatch
+install: mksquashfs unsquashfs
 	mkdir -p $(INSTALL_DIR)
-	cp sasquatch $(INSTALL_DIR)
+	cp mksquashfs $(INSTALL_DIR)
+	cp unsquashfs $(INSTALL_DIR)
